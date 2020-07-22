@@ -45,6 +45,8 @@ def build_database_level_structure(G, interaction_databases_path, df_expr):
             # Add attributes to nodes
             for n, x, node_type in [(n1, x1, node_type1), (n2, x2, node_type2)]:
                 G.nodes[n]["Median expression"] = np.median(x)
+                # This field will be useful for some programs (e.g. yED)
+                G.nodes[n]["Label"] = n
                 # If gene was already mentioned as TF do not mark it as a Gene
                 if G.nodes[n].get("Type") == "TF" and node_type == "Gene":
                     continue
@@ -55,11 +57,11 @@ def build_database_level_structure(G, interaction_databases_path, df_expr):
     G.remove_nodes_from(list(nx.isolates(G)))
 
 
-def filter_bad_edges(G, cutoff_percentile, sign_constraints):
+def filter_non_correlated_edges(G, cutoff_percentile, sign_constraints):
     '''
     For each interaction type and each interaction direction
     remove edges with low absolute value of correlation.
-    The Threshold is defined in terms of distribution percentile.
+    The threshold is defined in terms of distribution percentile.
     Also remove edges with correlation signs not matching
     constraints provided.
     '''
@@ -82,7 +84,7 @@ def filter_bad_edges(G, cutoff_percentile, sign_constraints):
         corr = G.edges[e]["Spearman correlation"]
         sign = "+" if corr > 0 else "-"
 
-        # Edge is bad if it's correlation is below the threshold or it
+        # Edge is removed if it's correlation is below the threshold or it
         # violates a sign constraint from the config
         if (
             abs(corr) < corr_thresholds[(type_, sign)] or
@@ -91,6 +93,7 @@ def filter_bad_edges(G, cutoff_percentile, sign_constraints):
             edges_to_remove.append(e)
 
     G.remove_edges_from(edges_to_remove)
+    G.remove_nodes_from(list(nx.isolates(G)))
 
 
 def calculate_scores(G, df_expr):
@@ -120,15 +123,17 @@ def calculate_scores(G, df_expr):
 
 def extract_core(G, incoming_score_threshold, interaction_score_cutoff_percentile):
     '''
-    Extract the core from the interaction network
+    Extract the core from the interaction network, i.e.
+    subgraph composed of highly regulated nodes (incoming score)
+    and highly regulating nodes (interaction score)
     '''
-    # Identify nodes with high incoming score
+    # Identify nodes with high incoming scores
     core_nodes = [n for n in G.nodes if G.nodes[n].get("Incoming score", 0) >= incoming_score_threshold]
     # Add nodes from adjacent incoming edges
     core_nodes += [n1 for n in core_nodes for n1, n2 in G.in_edges(nbunch=[n])]
     core = G.subgraph(core_nodes).copy()
 
-    # Remove edges with insignificant interaction scores
+    # Remove edges with low interaction scores
     interaction_score_threshold = np.percentile(
         [core.edges[e]["Interaction score"] for e in core.edges],
         interaction_score_cutoff_percentile
@@ -147,7 +152,31 @@ def save_graph(G, out_path, filename):
     nx.write_graphml(G, "{}/{}.graphml".format(out_path, filename))
 
 
+def node_report(G, out_file):
+    print(file=out_file)
+    print("Number of nodes: {}".format(len(G.nodes)), file=out_file)
+    print("Node types:", file=out_file)
+    node_types = [G.nodes[n]["Type"] for n in G.nodes]
+    for node_type in np.unique(node_types):
+        count = node_types.count(node_type)
+        print("\t- {} nodes with type = {}".format(count, node_type), file=out_file)
+
+
+def edge_report(G, out_file):
+    print(file=out_file)
+    print("Number of edges: {}".format(len(G.edges)), file=out_file)
+    print("Edge types:", file=out_file)
+    edge_types = [G.edges[e]["Type"] for e in G.edges]
+    for edge_type in np.unique(edge_types):
+        count = edge_types.count(edge_type)
+        print("\t- {} edges with type = {}".format(count, edge_type.replace("_", " -> ")), file=out_file)
+
+
 if __name__ == "__main__":
+    '''
+    Load input data from provided config file
+    '''
+
     if len(sys.argv) < 2:
         print("Usage: python run.py /path/to/config.json", file=sys.stderr)
         sys.exit(1)
@@ -184,17 +213,113 @@ if __name__ == "__main__":
         print("Please provide valid output directory")
         raise
 
-    G = nx.DiGraph()
-    G.add_nodes_from(df_expr.index.to_list())
+    '''
+    Build the network
+    '''
 
+    # Start building the network
+    G = nx.DiGraph()
+    # Build network on top of nodes from expression table
+    G.add_nodes_from(df_expr.index.to_list())
+    # Load edges from provided databases
     build_database_level_structure(G, config["interaction_databases_path"], df_expr)
-    filter_bad_edges(G, config["Spearman_correlation_cutoff_percentile"], config["sign_constraints"])
+    # Remove edges with low correlations
+    filter_non_correlated_edges(G, config["Spearman_correlation_cutoff_percentile"], config["sign_constraints"])
+    # Calculate interaction and incoming scores using ridge regression
     calculate_scores(G, df_expr)
-    core = extract_core(
+    # Extract subgraph with high scores
+    G = extract_core(
         G,
         config["incoming_score_threshold"],
         config["interaction_score_cutoff_percentile"]
     )
 
-    save_graph(G, "{}/graphs".format(config["output_path"]), "network")
-    save_graph(core, "{}/graphs".format(config["output_path"]), "core")
+    save_graph(G, "{}/networks".format(config["output_path"]), "network")
+
+    '''
+    Analyze network and create a report
+    '''
+
+    report_file = open("{}/report.txt".format(config["output_path"]), "w")
+
+    # Summary on nodes and edges
+    print("Network (summary)", file=report_file)
+    node_report(G, out_file=report_file)
+    edge_report(G, out_file=report_file)
+    print("\n" + "*"*17 + "\n", file=report_file)
+
+    for direction, func in [("out", G.out_degree), ("in", G.in_degree)]:
+        print("Distribution of {}-degrees\n".format(direction), file=report_file)
+        degrees = {n: func(nbunch=n) for n in G.nodes}
+        for deg in np.unique(list(degrees.values())):
+            count = list(degrees.values()).count(deg)
+            print("\t- {} nodes with {}-degree = {}".format(count, direction, deg), file=report_file)
+
+        print("\nTop-10 {}-degrees\n".format(direction), file=report_file)
+        for node, deg in sorted(degrees.items(), key=lambda x: x[1], reverse=True)[0:10]:
+            print("\t- {}, {}-degree = {}".format(node, direction, deg), file=report_file)
+
+        print("\n" + "*"*17 + "\n", file=report_file)
+
+
+    # Summary of weakly connected components
+    components = sorted(nx.weakly_connected_components(G), key=lambda comp: len(comp), reverse=True)
+    for i, comp in enumerate(components):
+        comp = G.subgraph(comp)
+        save_graph(comp, "{}/networks".format(config["output_path"]), "weakly_conn_component_{}".format(i + 1))
+
+        print("Weakly connected component #{} (summary)".format(i + 1), file=report_file)
+        node_report(comp, out_file=report_file)
+        edge_report(comp, out_file=report_file)
+        print("\n" + "*"*17 + "\n", file=report_file)
+
+    # Summary of non-trivial strongly connected components
+    components = sorted(nx.strongly_connected_components(G), key=lambda comp: len(comp), reverse=True)
+    for i, comp in enumerate(components):
+        if len(comp) == 1:
+            continue
+
+        comp = G.subgraph(comp)
+        save_graph(comp, "{}/networks".format(config["output_path"]), "strongly_conn_component_{}".format(i + 1))
+
+        print("Strongly connected component #{} (summary)".format(i + 1), file=report_file)
+        node_report(comp, out_file=report_file)
+        edge_report(comp, out_file=report_file)
+        print("\n" + "*"*17 + "\n", file=report_file)
+
+    # Calculate and export node statistics
+    columns = ["Type", "Incoming score", "Median expression"]
+    df = pd.DataFrame(
+        [[G.nodes[n].get(c) for c in columns] for n in G.nodes],
+        columns=columns
+    )
+    df.index = G.nodes
+    df.index.name = "Node"
+    df = df.sort_index()
+    # In- and out- degrees, centrality measures
+    df["In-degree"] = [G.in_degree(nbunch=n) for n in df.index]
+    df["Out-degree"] = [G.out_degree(nbunch=n) for n in df.index]
+    closeness_centrality = nx.algorithms.centrality.closeness_centrality(G)
+    betweenness_centrality = nx.algorithms.centrality.betweenness_centrality(G)
+    df["Closeness centrality"] = [closeness_centrality[n] for n in df.index]
+    df["Betweenness centrality"] = [betweenness_centrality[n] for n in df.index]
+
+    df.to_csv("{}/node_stats.csv".format(config["output_path"]))
+
+    # Calculate and export edge statistics
+    columns = ["Type", "Source", "Interaction score", "Spearman correlation"]
+    df = pd.DataFrame(
+        [[G.edges[e].get(c) for c in columns] for e in G.edges],
+        columns=columns
+    )
+    df["Type"] = [t.replace("_", " -> ") for t in df["Type"]]
+    df["From"] = [e[0] for e in G.edges]
+    df["To"] = [e[1] for e in G.edges]
+    # Reorder columns
+    df = df[["From", "To"] + columns]
+
+    betweenness_centrality = nx.algorithms.centrality.edge_betweenness_centrality(G)
+    df["Betweenness centrality"] = [betweenness_centrality[e] for e in G.edges]
+
+    df = df.sort_values("From")
+    df.to_csv("{}/edge_stats.csv".format(config["output_path"]), index=None)
