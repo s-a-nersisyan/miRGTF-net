@@ -18,3 +18,11 @@ All running options should be specified in config.json file (see example with de
 - Spearman_correlation_cutoff_percentile: percentile, specifying fraction of edges which will be removed during pre-processing. For example, value equal to 90 will preserve edges with top-10% Spearman correlations. The lower value is, the more "weak" edges will appear in the constructed network
 - incoming_score_threshold: threshold on regression goodness of fit (R^2 values). The higher value is, the more confident regulations will be included in the network
 - interaction_score_cutoff_percentile: percentile specifying fraction of edges which should be discarded at the final step. For example, value equal to 10 will discard edges with lowest-10% interaction scores. The higher value is, the more edges will be discarded
+
+## TCGA data
+ER+ breast cancer expression data from TCGA utilized in the manuscript is avaiable at https://drive.google.com/drive/folders/1c50BIlfF2SlnswJ2iTD0pXG6Rzt0Rs0m?usp=sharing.
+
+For user convenience, we also added instruction and prepared a script how to import arbitrary TCGA data subset:
+1. Access GDC Data Portal (https://portal.gdc.cancer.gov/)
+2. Select a project (e.g. TCGA-BRCA), add *.FPKM.txt.gz (RNA-seq) and *.isoforms.quantification.txt (miRNA-seq) files to the cart
+3. Download the cart and Sample Sheet
