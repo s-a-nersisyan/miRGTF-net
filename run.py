@@ -46,7 +46,7 @@ def build_database_level_structure(G, interaction_databases_path, df_expr):
             for n, x, node_type in [(n1, x1, node_type1), (n2, x2, node_type2)]:
                 G.nodes[n]["Median expression"] = np.median(x)
                 # This field will be useful for some programs (e.g. yED)
-                G.nodes[n]["Label"] = n
+                G.nodes[n]["Node name"] = n
                 # If gene was already mentioned as TF do not mark it as a Gene
                 if G.nodes[n].get("Type") == "TF" and node_type == "Gene":
                     continue
