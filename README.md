@@ -25,4 +25,5 @@ ER+ breast cancer expression data from TCGA utilized in the manuscript is avaiab
 For user convenience, we also added instruction and prepared a script how to import arbitrary TCGA data subset:
 1. Access GDC Data Portal (https://portal.gdc.cancer.gov/)
 2. Select a project (e.g. TCGA-BRCA), add *.FPKM.txt.gz (RNA-seq) and *.isoforms.quantification.txt (miRNA-seq) files to the cart
-3. Download the cart and Sample Sheet
+3. Download the cart and Sample Sheet, unpack *.tar.gz archive
+4. Move to the TCGA folder and run python3 process.py /path/to/sample_sheet.tsv /path/to/gdc_download_unpacked_folder . This will generate gene and miRNA expression tables (TPM) for matched primary tumors as described in the manuscript. GENCODE v22 and miRBase v21 are used as default versions for TCGA (August 2020)
