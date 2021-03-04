@@ -27,3 +27,6 @@ For user convenience, we also added instruction and prepared a script how to imp
 2. Select a project (e.g. TCGA-BRCA), add *.FPKM.txt.gz (RNA-seq) and *.isoforms.quantification.txt (miRNA-seq) files to the cart
 3. Download the cart and Sample Sheet, unpack *.tar.gz archive
 4. Move to the TCGA folder and run python3 process.py /path/to/sample_sheet.tsv /path/to/gdc_download_unpacked_folder . This will generate gene and miRNA expression tables (TPM) for matched primary tumors as described in the manuscript. GENCODE v22 and miRBase v21 are used as default versions for TCGA (August 2020)
+
+## Note about miRNA/gene identifiers
+Please be careful when using different miRNA/gene/TF databases – they could have built on different versions of miRBase/RefSeq/Ensembl, which will result in missing edges. We recommend using miRBaseConverter (https://taoshengxu.shinyapps.io/mirbaseconverter/) and HGNC Multi-symbol checker (https://www.genenames.org/tools/multi-symbol-checker/) for miRNA/gene name convertations.
