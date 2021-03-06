@@ -1,8 +1,8 @@
 {
-	"interaction_databases_path": "./input_examples/interaction_databases",
+	"interaction_databases_path": "./input_examples/interaction_databases/human",
 	"sign_constraints": {
 		"intronic_sense_miRNAs.tsv": "+",
-		"miRTarBase_v7_0.tsv": "-"
+		"miRTarBase_v8_0_SE_WR.tsv": "-"
 	},
 	"gene_expression_table_path": "./input_examples/gene_expression.tsv",
 	"miRNA_expression_table_path": "./input_examples/miRNA_expression.tsv",

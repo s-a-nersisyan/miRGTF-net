@@ -16,7 +16,7 @@ df_gene = pd.DataFrame()
 df_miRNA = pd.DataFrame()
 
 gencode = pd.read_csv("GENCODE_22.tsv", sep="\t", index_col=0)
-miRBase = pd.read_csv("miRBase_21.tsv", sep="\t", index_col=1)
+miRBase = pd.read_csv("miRBase_22_1.tsv", sep="\t", index_col=1)
 
 for case_id in case_ids:
     files = sample_sheet.loc[sample_sheet["Case ID"] == case_id]
