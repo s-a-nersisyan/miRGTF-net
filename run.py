@@ -189,6 +189,7 @@ if __name__ == "__main__":
         raise
 
     # Load gene and miRNA expression tables
+    print("Loading input expression data...")
     try:
         df_gene = pd.read_csv(
             config["gene_expression_table_path"],
@@ -220,14 +221,18 @@ if __name__ == "__main__":
     # Start building the network
     G = nx.DiGraph()
     # Build network on top of nodes from expression table
+    print("Building network from databases (this can take some time)...")
     G.add_nodes_from(df_expr.index.to_list())
     # Load edges from provided databases
     build_database_level_structure(G, config["interaction_databases_path"], df_expr)
     # Remove edges with low correlations
+    print("Discarding edges connecting uncorrelated nodes and wrong-directional interactions...")
     filter_non_correlated_edges(G, config["Spearman_correlation_cutoff_percentile"], config["sign_constraints"])
     # Calculate interaction and incoming scores using ridge regression
+    print("Fitting regression models (this can take some time)...")
     calculate_scores(G, df_expr)
     # Extract subgraph with high scores
+    print("Discarding weak interactions...")
     G = extract_core(
         G,
         config["incoming_score_threshold"],
@@ -240,6 +245,7 @@ if __name__ == "__main__":
     Analyze network and create a report
     '''
 
+    print("Generating report...")
     report_file = open("{}/report.txt".format(config["output_path"]), "w")
 
     # Summary on nodes and edges
@@ -323,3 +329,9 @@ if __name__ == "__main__":
 
     df = df.sort_values("From")
     df.to_csv("{}/edge_stats.csv".format(config["output_path"]), index=None)
+    
+    print("All done!")
+    print("General report: {}/report.txt".format(config["output_path"]))
+    print("Node statistics: {}/node_stats.csv".format(config["output_path"]))
+    print("Edge statistics: {}/edge_stats.csv".format(config["output_path"]))
+    print("Raw network files: {}/networks/".format(config["output_path"]))
