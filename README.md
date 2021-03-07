@@ -30,3 +30,6 @@ For user convenience, we also added instruction and prepared a script how to imp
 
 ## Note about miRNA/gene identifiers
 Please be careful when using different miRNA/gene/TF databases – they could have built on different versions of miRBase/RefSeq/Ensembl, which will result in missing nodes/edges. We recommend using miRBaseConverter (https://taoshengxu.shinyapps.io/mirbaseconverter/) and HGNC Multi-symbol checker (https://www.genenames.org/tools/multi-symbol-checker/) for miRNA/gene name convertations. All pre-included miRNA databases (both for human and mouse) are already compatible with miRBase v22.1.
+
+## Network vizualization
+miRGTF-net uses graphml format to export networks and their weakly/strongly connected components. We recommend using Gephi (https://gephi.org) or yEd Graph Editor (https://www.yworks.com/products/yed) to vizualize them in effective and beautiful way. 
