@@ -36,4 +36,5 @@ miRGTF-net uses graphml format to export networks and their weakly/strongly conn
 
 ## References
 If you use miRGTF-net in your research, please cite the following manuscript:
+
 Nersisyan S, Galatenko A, Galatenko V, Shkurnikov M, Tonevitsky A (2021) miRGTF-net: Integrative miRNA-gene-TF network analysis reveals key drivers of breast cancer recurrence. PLOS ONE 16(4): e0249424. https://doi.org/10.1371/journal.pone.0249424
